@@ -1,11 +1,8 @@
 package com.hackathon.onn.musicalbike;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
-import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -23,11 +20,23 @@ import com.gemsense.gemsdk.GemSDKUtilityApp;
 
 import java.io.File;
 
+import static java.lang.Math.abs;
+
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "Activity";
     private Gem gem;
-    MediaPlayer mPlayer;
+    MediaPlayer mPlayerSuccess;
+    MediaPlayer mPlayerFail;
+
     int loseSound = 0;
-    float threshold = 0.3f;
+    float threshold = 0.02f; //acceleration must change at least this figure in ABS within the time interval.
+    long lastTime = System.currentTimeMillis();
+    long interval = 1000 ; // the interval between time samples
+    float prevAcc = 0f;
+    private boolean fail;
+    private boolean success;
+    private boolean foundGem = true;
+    private boolean failFirstTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
         initGem(whitelist[0]);
         loseSound = R.raw.sad;
 
-        mPlayer = MediaPlayer.create(getApplicationContext(), loseSound);//Create MediaPlayer object with MP3 file under res/raw folder
+      //  mPlayerSuccess = MediaPlayer.create(getApplicationContext(), loseSound);//Create MediaPlayer object with MP3 file under res/raw folder
 
       /*  Uri myUri = Uri.parse("file:///Internal storage/Download/John Legend  - All Of Me.mp3");
         MediaPlayer mediaPlayer = new MediaPlayer();
@@ -47,6 +56,41 @@ public class MainActivity extends AppCompatActivity {
         mediaPlayer.prepare();
         mediaPlayer.start();
 */
+        mPlayerSuccess = MediaPlayer.create(getApplicationContext(), R.raw.a3);
+        mPlayerFail = MediaPlayer.create(getApplicationContext(), R.raw.b1);
+//        mPlayerFail.start();
+//        final MediaPlayer.OnCompletionListener success = new MediaPlayer.OnCompletionListener() {
+//
+//            @Override
+//            public void onCompletion(MediaPlayer arg0) {
+////                if (foundGem) {
+//                    if (MainActivity.this.success) {
+//                        mPlayerSuccess.start();
+//                    } else {
+//                        mPlayerFail.start();
+//                    }
+////                }
+//
+//                ;//Create MediaPlayer object with MP3 file under res/raw folder
+//
+//            }
+//        };
+
+//        mPlayerSuccess.setOnCompletionListener(success);
+//        MediaPlayer.OnCompletionListener failListener = new MediaPlayer.OnCompletionListener() {
+//            @Override
+//            public void onCompletion(MediaPlayer mediaPlayer) {
+////                if (foundGem) {
+//                    if (MainActivity.this.success) {
+//                        mPlayerSuccess.start();
+//                    } else {
+//                        mPlayerFail.start();
+////                    }
+//                }
+//
+//             }
+//        };
+//        mPlayerFail.setOnCompletionListener(failListener);
 
 //        get list of files
         File file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -73,24 +117,70 @@ public class MainActivity extends AppCompatActivity {
             public void onSensorsChanged(GemSensorsData data) {
 
                 float a[] = data.acceleration;
-                double acc = Math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
+                float q[] = data.quaternion;
+                //double acc = Math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
 
                 //filteredAcc[0] = (filteredAcc[0] + acc[0]) / 2f;
                 //filteredAcc[1] = (filteredAcc[1] + acc[1]) / 2f;
                 //filteredAcc[2] = (filteredAcc[2] + acc[2]) / 2f;
 
-                Log.i("Acceleration", "Speed " + acc);
+              //  Log.i("Acceleration", "acceleration " + a[0] + " " + a[1] + " " + a[2]);
+               // Log.i("Quaternion", "quaternion " + q[0] + " " + q[1] + " " + q[2] + " " + q[3]);
+                //Create MediaPlayer object with MP3 file under res/raw folder
 
-                if(acc < (1- threshold) || acc < (1+threshold)){
-                    mPlayer.start();
+                Log.d(TAG, "is succues playong: " + mPlayerSuccess.isPlaying());
+                Log.d(TAG, "is succues fail: " + mPlayerFail.isPlaying());
+                long now = System.currentTimeMillis();
+                if (now - lastTime > interval) {
+                    if((q[0]) - prevAcc > threshold) {
+                    //play stuff or continue playing
+                        if (mPlayerFail.isPlaying()) {
+                            mPlayerFail.stop();
+
+                        }
+
+                        if (!mPlayerSuccess.isPlaying()) {
+                            mPlayerSuccess.start();
+                        }
+
+                        success = true;
+
+
+                    }
+                    else {
+                        success = false;
+                        //      Log.i("Play", "Stopped ");
+
+                        if (mPlayerSuccess.isPlaying()) {
+
+                            mPlayerSuccess.stop();
+
+                        }
+
+                        // not playing: getCurrentInt > 0
+                        if (!mPlayerFail.isPlaying()) {
+                            mPlayerFail.start();
+
+                        }
+                        fail = true;
+                    }
+                    prevAcc = (q[0]);
+                    Log.d(TAG, "value:" + (q[0]));
+                    lastTime = now;
 
                 }
+         //       if(acc < (1- threshold) || acc < (1+threshold)){
+        //            mPlayerSuccess.start();
+
+           //     }
+
 
             }
 
             @Override
             public void onErrorOccurred(int i) {
                 Toast.makeText(MainActivity.this, "Can't find a gem", Toast.LENGTH_SHORT).show();
+                foundGem = false;
             }
 
         });
