@@ -3,11 +3,11 @@ package com.hackathon.onn.musicalbike;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
+import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -17,10 +17,9 @@ import com.gemsense.gemsdk.Gem;
 import com.gemsense.gemsdk.GemListener;
 import com.gemsense.gemsdk.GemManager;
 import com.gemsense.gemsdk.GemSDKUtilityApp;
+import com.gemsense.gemsdk.OnSensorsAbstractListener;
 
 import java.io.File;
-
-import static java.lang.Math.abs;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Activity";
@@ -114,8 +113,30 @@ public class MainActivity extends AppCompatActivity {
         //Get a gem
         gem = GemManager.getDefault().getGem(address, new GemListener() {
             @Override
-            public void onSensorsChanged(GemSensorsData data) {
+            public void onStateChanged(int state) {
+                //States handling
+                switch (state) {
+                    case Gem.STATE_CONNECTED:
+                        Log.d("GemDemo", "Connected to a gem");
+                        break;
+                    case Gem.STATE_DISCONNECTED:
+                        Log.d("GemDemo", "Gem was disconnected");
+                        break;
+                }
+            }
 
+            @Override
+            public void onErrorOccurred(int i) {
+                Toast.makeText(MainActivity.this, "Can't find a gem", Toast.LENGTH_SHORT).show();
+                foundGem = false;
+            }
+
+        });
+
+        gem.setSensorsListener(new OnSensorsAbstractListener() {
+            @Override
+            public void onSensorsChanged(GemSensorsData data) {
+                super.onSensorsChanged(data);
                 float a[] = data.acceleration;
                 float q[] = data.quaternion;
                 //double acc = Math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
@@ -124,8 +145,8 @@ public class MainActivity extends AppCompatActivity {
                 //filteredAcc[1] = (filteredAcc[1] + acc[1]) / 2f;
                 //filteredAcc[2] = (filteredAcc[2] + acc[2]) / 2f;
 
-              //  Log.i("Acceleration", "acceleration " + a[0] + " " + a[1] + " " + a[2]);
-               // Log.i("Quaternion", "quaternion " + q[0] + " " + q[1] + " " + q[2] + " " + q[3]);
+                //  Log.i("Acceleration", "acceleration " + a[0] + " " + a[1] + " " + a[2]);
+                // Log.i("Quaternion", "quaternion " + q[0] + " " + q[1] + " " + q[2] + " " + q[3]);
                 //Create MediaPlayer object with MP3 file under res/raw folder
 
                 Log.d(TAG, "is succues playong: " + mPlayerSuccess.isPlaying());
@@ -133,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
                 long now = System.currentTimeMillis();
                 if (now - lastTime > interval) {
                     if((q[0]) - prevAcc > threshold) {
-                    //play stuff or continue playing
+                        //play stuff or continue playing
                         if (mPlayerFail.isPlaying()) {
                             mPlayerFail.stop();
 
@@ -169,20 +190,13 @@ public class MainActivity extends AppCompatActivity {
                     lastTime = now;
 
                 }
-         //       if(acc < (1- threshold) || acc < (1+threshold)){
-        //            mPlayerSuccess.start();
+                //       if(acc < (1- threshold) || acc < (1+threshold)){
+                //            mPlayerSuccess.start();
 
-           //     }
+                //     }
 
 
             }
-
-            @Override
-            public void onErrorOccurred(int i) {
-                Toast.makeText(MainActivity.this, "Can't find a gem", Toast.LENGTH_SHORT).show();
-                foundGem = false;
-            }
-
         });
 
     }

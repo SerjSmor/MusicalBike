@@ -16,6 +16,9 @@ allprojects {
     repositories {
         jcenter()
         maven { url 'https://raw.github.com/Gemsense/GemSDK-for-Android/mvn-repo' }
+        flatDir {
+            dirs 'libs'
+        }
 
     }
 }
